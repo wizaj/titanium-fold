@@ -4,6 +4,8 @@ A Chromium-based Titanium fork for the **Samsung Galaxy Z Fold 8** inner display
 
 This document is the working plan: product intent, how the overlay repo works, what is already patched, how we will build, and what is still blocked.
 
+**Git: stay on `main`.** This is a personal fork. Do all work on `main` — no feature branches, no `cursor/*` branches, no split PRs unless that policy changes. Commit on `main`, push `main` when asked. If a branch is created by tooling, merge it into `main` immediately and delete it.
+
 ---
 
 ## 1. Problem
@@ -63,7 +65,7 @@ This is **not** a Chromium tree. It is a **build overlay** on Vanadium / Chromiu
 | `patches/fold/` | Fold-specific Java copied into Chromium at patch time. |
 | `.github/workflows/build.yml` | CI. Upstream uses a **self-hosted** Linux runner; GitHub-hosted runners are too small. |
 
-Tab UI lives in Chromium, applied at checkout. We do not vendor 30M lines of C++ here.
+Tab UI lives in Chromium, applied at checkout. We do not vendor 30M lines of C++ here. History lives on `main` only (see the Git note at the top).
 
 Tracked Chromium at time of writing: **152.0.7977.x** (Vanadium tags exist through **153.0.8010.x**). Android vertical tabs landed in Chromium in 2026 (`android-vertical-tabs`, expiry milestone 160). The flag, `VerticalTabsSideUiCoordinator`, and collapsed rail **exist in 152**.
 
@@ -309,4 +311,4 @@ When Hetzner approves **48 dedicated vCPUs**:
 4. Snapshot and delete the server.
 5. File Milestone 2 tweaks from the device, not from screenshots alone.
 
-No Chromium compile can start until that quota exists. Overlay code for Milestone 1 is already in this repo.
+No Chromium compile can start until that quota exists. Overlay code for Milestone 1 is already on `main`. Keep follow-up patches on `main` as well.
