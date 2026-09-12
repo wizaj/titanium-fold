@@ -25,7 +25,7 @@ sed -i 's|static Intent maybeModifyCustomTabIntents(Context context, Intent inte
 sed -i 's|readBoolean(getSettingsPreferenceKey(moduleType), true)|readBoolean(getSettingsPreferenceKey(moduleType), !HomeModulesUtils.belongsToEducationalTipModule(moduleType))|' chrome/browser/magic_stack/android/java/src/org/chromium/chrome/browser/magic_stack/HomeModulesConfigManager.java # ntp
 
 # sed -i 's|int ExpirationMilestoneForFlag(const char\* flag) {|int ExpirationMilestoneForFlag(const char* flag) { if ((true)) return -1;|' chrome/browser/unexpire_flags.cc
-for flag in "align-wakeups" "android-bottom-bar" "cct-open-in-browser-button-if-allowed-by-embedder" "darken-websites-checkbox-in-themes-setting" "enable-accessibility-sequential-focus" "enforce-incognito-isolation" "inline-pdf-v2" "jump-start-omnibox" "offline-auto-fetch" "use-fullscreen-insets-api"; do
+for flag in "align-wakeups" "android-bottom-bar" "android-vertical-tabs" "cct-open-in-browser-button-if-allowed-by-embedder" "darken-websites-checkbox-in-themes-setting" "enable-accessibility-sequential-focus" "enforce-incognito-isolation" "inline-pdf-v2" "jump-start-omnibox" "offline-auto-fetch" "use-fullscreen-insets-api"; do
     sed -i "/\"name\": \"$flag\"/,/}/ s/\"expiry_milestone\": [0-9]\+/\"expiry_milestone\": -1/" chrome/browser/flag-metadata.json
 done
 sed -i 's|newFlag(OmniboxFeatureList.OMNIBOX_SITE_SEARCH, FeatureState.ENABLED_IN_TEST);|newFlag(OmniboxFeatureList.OMNIBOX_SITE_SEARCH, FeatureState.ENABLED_IN_PROD);|' components/omnibox/common/android/java/src/org/chromium/components/omnibox/OmniboxFeatures.java # search
@@ -42,6 +42,7 @@ feature_overrides.EnableFeature(media::kAutoPictureInPictureAndroid);\
 feature_overrides.EnableFeature(media::kContextMenuPictureInPictureAndroid);\
 feature_overrides.EnableFeature(chrome::android::kLoadAllTabsAtStartup);\
 feature_overrides.EnableFeature(chrome::android::kChromeNativeUrlOverriding);\
+feature_overrides.EnableFeature(chrome::android::kAndroidVerticalTabs);\
 #if 0
 d}' chrome/browser/chrome_browser_field_trials.cc
 sed -i '/^bool ShouldFallbackToSWIfGLES3NotSupported() {$/,/^}$/ s|^  return true;$|  return false;|' ui/gl/gl_features.cc # virt
@@ -160,5 +161,27 @@ if (content::WebContents::HasLiveWebContentsForBrowserContext(profile)) { return
 # crbug.com/444024982: api 31
 sed -i 's/|| mSupportedProfileType == SupportedProfileType.REGULAR) {/|| mSupportedProfileType == SupportedProfileType.REGULAR || mSupportedProfileType == SupportedProfileType.MIXED) {/' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
 sed -i 's/|| mSupportedProfileType == SupportedProfileType.OFF_THE_RECORD) {/|| mSupportedProfileType == SupportedProfileType.OFF_THE_RECORD || mSupportedProfileType == SupportedProfileType.MIXED) {/' chrome/android/java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java
+
+# fold: vertical tabs on the camera edge (portrait, collapsed, thinner, skip punch-hole)
+sed -i 's/BASE_FEATURE(kAndroidVerticalTabs, base::FEATURE_DISABLED_BY_DEFAULT);/BASE_FEATURE(kAndroidVerticalTabs, base::FEATURE_ENABLED_BY_DEFAULT);/' chrome/browser/flags/android/chrome_feature_list.cc
+sed -i '/sAndroidVerticalTabs =/,/;/ s/\/\* defaultValue= \*\/ false/\/\* defaultValue= \*\/ true/' chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
+sed -i 's/ANDROID_VERTICAL_TABS, "enable_by_default", \/\* defaultValue= \*\/ false/ANDROID_VERTICAL_TABS, "enable_by_default", \/* defaultValue= *\/ true/' chrome/browser/flags/android/java/src/org/chromium/chrome/browser/flags/ChromeFeatureList.java
+sed -i 's/SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP = 76/SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP = 52/' chrome/browser/ui/vertical_tabs/android/java/src/org/chromium/chrome/browser/ui/vertical_tabs/VerticalTabUtils.java
+sed -i 's/readBoolean(ChromePreferenceKeys.VERTICAL_TABS_COLLAPSED, false)/readBoolean(ChromePreferenceKeys.VERTICAL_TABS_COLLAPSED, true)/' chrome/browser/ui/vertical_tabs/android/java/src/org/chromium/chrome/browser/ui/vertical_tabs/VerticalTabUtils.java
+sed -i '/boolean defaultValue = isVerticalTabsEnabledByDefault();/,/defaultValue);/ c\
+        if (context.getResources().getConfiguration().orientation\
+                == android.content.res.Configuration.ORIENTATION_LANDSCAPE) {\
+            return false;\
+        }\
+        return true;' chrome/browser/ui/vertical_tabs/android/java/src/org/chromium/chrome/browser/ui/vertical_tabs/VerticalTabUtils.java
+sed -i 's/mAnchorSide = AnchorSide.LEFT;/mAnchorSide = AnchorSide.RIGHT;/' chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabsSideUiCoordinator.java
+sed -i 's/vertical_tabs_rail_horizontal_margin">12dp/vertical_tabs_rail_horizontal_margin">4dp/' chrome/android/features/tab_ui/java/res/values/dimens.xml
+sed -i 's/vertical_tabs_header_button_collapsed_margin_end">8dp/vertical_tabs_header_button_collapsed_margin_end">2dp/' chrome/android/features/tab_ui/java/res/values/dimens.xml
+sed -i 's/vertical_tabs_scrollbar_padding_end">9dp/vertical_tabs_scrollbar_padding_end">2dp/' chrome/android/features/tab_ui/java/res/values/dimens.xml
+sed -i 's/vertical_tabs_scrollbar_margin_end">-9dp/vertical_tabs_scrollbar_margin_end">-2dp/' chrome/android/features/tab_ui/java/res/values/dimens.xml
+sed -i 's|VerticalTabGroupSpineDecoration.java",|&\n  "//chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/FoldCutoutGapDecoration.java",|' chrome/android/features/tab_ui/tab_management_java_sources.gni
+cp "$SCRIPT_DIR/patches/fold/FoldCutoutGapDecoration.java" chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/FoldCutoutGapDecoration.java
+sed -i '/recyclerView.addItemDecoration(mSpineDecoration);/a\        recyclerView.addItemDecoration(new FoldCutoutGapDecoration(recyclerView));' chrome/android/features/tab_ui/java/src/org/chromium/chrome/browser/tasks/tab_management/vertical_tabs/VerticalTabListCoordinator.java
+sed -i '/if (newConfig.orientation != mConfig.orientation) {/,/}/ s/getActivityTab());/getActivityTab());\n                doRecreateActivity();\n                return;/' chrome/android/java/src/org/chromium/chrome/browser/app/ChromeActivity.java
 
 export PATCHED=1

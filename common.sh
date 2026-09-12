@@ -7,10 +7,25 @@ replace() {
 
 set_keys() {
     mkdir -p $SCRIPT_DIR/keys
-    echo $LOCAL_TEST_JKS | base64 -d > $SCRIPT_DIR/keys/local.properties
-    echo $STORE_TEST_JKS | base64 -d > $SCRIPT_DIR/keys/test.jks
-    unset LOCAL_TEST_JKS
-    unset STORE_TEST_JKS
+    if [ -n "${LOCAL_TEST_JKS:-}" ] && [ -n "${STORE_TEST_JKS:-}" ]; then
+        echo $LOCAL_TEST_JKS | base64 -d > $SCRIPT_DIR/keys/local.properties
+        echo $STORE_TEST_JKS | base64 -d > $SCRIPT_DIR/keys/test.jks
+        unset LOCAL_TEST_JKS
+        unset STORE_TEST_JKS
+        return
+    fi
+    # Unsigned-secrets fallback: a local debug keystore for Fold test APKs.
+    keytool -genkeypair -noprompt \
+        -alias fold \
+        -keyalg RSA -keysize 2048 -validity 10000 \
+        -keystore $SCRIPT_DIR/keys/test.jks \
+        -storepass android -keypass android \
+        -dname "CN=Titanium Fold, O=Titanium Fold, C=US"
+    cat > $SCRIPT_DIR/keys/local.properties << 'EOF'
+keyAlias=fold
+keyPassword=android
+storePassword=android
+EOF
 }
 
 sign_apk() {
